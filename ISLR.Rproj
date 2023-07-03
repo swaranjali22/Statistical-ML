@@ -11,3 +11,95 @@ Encoding: UTF-8
 
 RnwWeave: Sweave
 LaTeX: pdfLaTeX
+install.packages("ISLR")
+install.packages("MASS")
+library("MASS")
+library(ISLR)
+names(Smarket)
+summary(Smarket)
+cor(Smarket [-9])
+#no correlation between today's returns and yesterday's return
+
+attach(Smarket)
+plot(Volume)
+View(Smarket)
+
+
+#creating a logistic regression to predict the direction of stocks using lag1, lag5 and volume
+
+glm.fit<- glm(Direction~Lag1+Lag5+Volume,data=Smarket,family=binomial)
+summary(glm.fit)
+coef(glm.fit)
+
+#checking contrasts
+contrasts(Direction)
+
+#checking the probability of each value
+glm.probs<-predict(glm.fit,type="response")
+glm.probs
+
+#creating a vector of 1250 'down' labels
+glm.pred<-rep("Down",1250)
+glm.pred[glm.probs>0.5]="Up"
+glm.pred
+
+#confusion matrix
+table(glm.pred,Direction)
+
+#using mean function to to compute the fraction of days the model predicted correctly
+ mean(glm.pred==Direction)
+
+#Creating a subset of the training data to test the model on held-out data
+train<-(Year<2005)
+train
+Smarket.2005<-Smarket[!train,]
+Smarket.2005
+Direction.2005<-Direction[!train]
+
+#creating a logistic regression model that is trained only with data<2005
+glm.fit.2<-glm(Direction~Lag1+Lag5+Volume,data=Smarket,family=binomial,subset=train)
+summary(glm.fit.2)
+glm.probs.2<-predict(glm.fit.2,Smarket.2005,type="response")
+glm.probs.2
+
+glm.pred.2<-rep("Down",252)
+glm.pred.2[glm.probs.2>0.5]="Up"
+glm.pred.2
+
+#confusion matrix
+table(glm.pred.2,Direction.2005)
+
+#calculating proportion of right classification i.e., test error rate
+mean(glm.pred.2==Direction.2005)
+
+#Now performing LDA
+lda.fit=lda(Direction~Lag1+Lag2,data=Smarket,subset=train)
+lda.fit
+
+#Predictions by the LDA model
+lda.predict<-predict(lda.fit,Smarket.2005)
+lda.predict
+names(lda.predict)
+
+#LDA model classification of market going up or down 
+#i.e., by default based on 50% threshold
+lda.class<-lda.predict$class
+lda.class
+
+table(lda.class,Direction.2005)
+mean(lda.class==Direction.2005)
+
+#trying to change the threshold to 90% posterior probability of the market going Down
+sum(lda.predict$posterior[ ,1]>.9)
+
+#fitting a QDA model
+qda.fit=qda(Direction~Lag1+Lag2,data=Smarket,subset=train)
+qda.fit
+
+qda.predict<-predict(qda.fit,Smarket.2005)$class
+qda.predict
+
+table(qda.predict,Direction.2005)
+mean(qda.predict==Direction.2005)
+
+#QDA model worked the best
